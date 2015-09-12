@@ -33,16 +33,16 @@ var (
 )
 
 var logFormatExample = `Log format example:
-  1EF9┐a19.ru. A IN                      # uncashed query
+  1EF9┐a19.ru. A IN                      # uncached query
   AAB1┐a19.ru. A IN                      # concurrent query
   152E┐a19.ru. A IN                      # concurrent query
   1EF9└a19.ru. A IN = (A 78.47.223.116)  # answer now cached
   AAB1┴1EF9                              # answer already cached
   152E┴1EF9                              # answer already cached
   2899┐a29.ru. A IN                      # uncached query
-  2899·a29.ru. A IN: [1/5] read udp 127.0.0.1:50019->127.0.0.1:53: attempt/o timeout
+  2899·a29.ru. A IN: [1/5] read udp 127.0.0.1:50019->127.0.0.1:53: i/o timeout
     # first attempt of five failed to return an answer
-  2899╳a29.ru. A IN: [5/5] read udp 127.0.0.1:50019->127.0.0.1:53: attempt/o timeout
+  2899╳a29.ru. A IN: [5/5] read udp 127.0.0.1:50019->127.0.0.1:53: i/o timeout
     # final attempt failed, we sent client servfail
 `
 
