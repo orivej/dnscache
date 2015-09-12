@@ -85,14 +85,14 @@ func serve(w dns.ResponseWriter, req *dns.Msg) {
 	// cached value will not change until return because of SingleInflight
 	cacheLock.Unlock()
 	if !ok {
-		log.Printf(`%X┐%s`, req.Id, key)
+		log.Printf(`%04X┐%s`, req.Id, key)
 		cached, _, err = dnsclient.Exchange(req, *flUpstream)
 		if err != nil {
-			log.Printf(`%X╳%s: %v`, req.Id, key, err)
+			log.Printf(`%04X╳%s: %v`, req.Id, key, err)
 			dns.HandleFailed(w, req)
 			return
 		}
-		log.Printf(`%X└%s = %s`, req.Id, key, answersSummary(cached))
+		log.Printf(`%04X└%s = %s`, req.Id, key, answersSummary(cached))
 		cacheLock.Lock()
 		cache[key] = cached
 		cacheLock.Unlock()
