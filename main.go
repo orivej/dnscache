@@ -106,6 +106,14 @@ func serve(w dns.ResponseWriter, req *dns.Msg) {
 		for attempt := 1; attempt <= queryAttempts; attempt++ {
 			cached, _, err = dnsclient.Exchange(req, *flUpstream)
 			if err != nil {
+				cacheLock.Lock()
+				_, ok = cache[key]
+				cacheLock.Unlock()
+				if ok {
+					// concurrent exchange succeeded
+					err = nil
+					break
+				}
 				sep := "·"
 				if attempt == queryAttempts {
 					sep = "╳"
