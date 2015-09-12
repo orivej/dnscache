@@ -16,7 +16,7 @@ var (
 var (
 	cache     = map[string]*dns.Msg{}
 	cacheLock = sync.Mutex{}
-	dnsclient = dns.Client{SingleInflight: true}
+	dnsclient = dns.Client{UDPSize: dns.MaxMsgSize, SingleInflight: true}
 )
 
 func main() {
@@ -53,7 +53,7 @@ func serve(w dns.ResponseWriter, req *dns.Msg) {
 	} else {
 		resp, _, err = dnsclient.Exchange(req, *flUpstream)
 		if err != nil {
-			log.Printf("Failed to handle %v: %v\n", key, err)
+			log.Printf("Can not handle %v: %v\n", key, err)
 			dns.HandleFailed(w, req)
 			return
 		}
