@@ -36,11 +36,11 @@ func serve() {
 
 		// prepare response
 		key := string(inbuf[2:])
-		if value, ok := cache[key]; ok {
-			// copy from cache
-			copy(outbuf, value)
-			copy(outbuf, inbuf[:2]) // Transaction ID
-			n = len(value)
+		var value []byte
+		var ok bool
+		if value, ok = cache[key]; ok {
+			// update cache
+			copy(value, inbuf[:2]) // Transaction ID
 		} else {
 			// query upstream
 			_, err = out.Write(inbuf[:n])
@@ -55,13 +55,13 @@ func serve() {
 			}
 
 			// save in cache
-			value := make([]byte, n)
-			copy(value, outbuf[:n])
+			value = make([]byte, n)
+			copy(value, outbuf)
 			cache[key] = value
 		}
 
 		// answer incoming
-		_, err = in.WriteToUDP(outbuf[:n], inaddr)
+		_, err = in.WriteToUDP(value, inaddr)
 		if eprint(err) {
 			continue
 		}
