@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"runtime"
@@ -29,7 +28,4 @@ func eprint(e error) bool {
 		fmt.Fprintln(os.Stderr, e)
 	}
 	return e != nil
-}
-func eclose(c io.Closer) {
-	eexit(c.Close())
 }
