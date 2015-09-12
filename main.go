@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/miekg/dns"
@@ -41,6 +42,26 @@ func msgKey(m *dns.Msg) string {
 	return m.Question[0].Name + " " + t + " " + cl
 }
 
+func recordSummary(r dns.RR) string {
+	s := r.String()
+	parts := strings.Split(s, "\t")
+	nparts := len(parts)
+	if nparts < 2 {
+		return s
+	}
+	return "(" + strings.Join(parts[nparts-2:], " ") + ")"
+}
+
+func answersSummary(m *dns.Msg) string {
+	var answers []string
+	if m.Answer != nil {
+		for _, rr := range m.Answer {
+			answers = append(answers, recordSummary(rr))
+		}
+	}
+	return strings.Join(answers, " ")
+}
+
 func serve(w dns.ResponseWriter, req *dns.Msg) {
 	var resp dns.Msg
 	var err error
@@ -57,7 +78,7 @@ func serve(w dns.ResponseWriter, req *dns.Msg) {
 			dns.HandleFailed(w, req)
 			return
 		}
-		log.Printf(`%X└%s`, req.Id, key)
+		log.Printf(`%X└%s = %s`, req.Id, key, answersSummary(cached))
 		cacheLock.Lock()
 		cache[key] = cached
 		cacheLock.Unlock()
