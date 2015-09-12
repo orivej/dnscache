@@ -7,8 +7,14 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
+)
+
+const (
+	queryAttempts = 5
+	queryTimeout  = 1100 * time.Millisecond
 )
 
 var (
@@ -19,7 +25,11 @@ var (
 var (
 	cache     = map[string]*dns.Msg{}
 	cacheLock = sync.Mutex{}
-	dnsclient = dns.Client{UDPSize: dns.MaxMsgSize, SingleInflight: true}
+	dnsclient = dns.Client{
+		UDPSize:        dns.MaxMsgSize,
+		ReadTimeout:    queryTimeout,
+		SingleInflight: true,
+	}
 )
 
 var logFormatExample = `Log format example:
@@ -30,7 +40,10 @@ var logFormatExample = `Log format example:
   AAB1┴1EF9                              # answer already cached
   152E┴1EF9                              # answer already cached
   2899┐a29.ru. A IN                      # uncached query
-  2899╳a29.ru. A IN: read udp 127.0.0.1:50019->127.0.0.1:53: i/o timeout  # can not answer
+  2899·a29.ru. A IN: [1/5] read udp 127.0.0.1:50019->127.0.0.1:53: attempt/o timeout
+    # first attempt of five failed to return an answer
+  2899╳a29.ru. A IN: [5/5] read udp 127.0.0.1:50019->127.0.0.1:53: attempt/o timeout
+    # final attempt failed, we sent client servfail
 `
 
 func main() {
@@ -89,10 +102,19 @@ func serve(w dns.ResponseWriter, req *dns.Msg) {
 	// cached value will not change until return because of SingleInflight
 	cacheLock.Unlock()
 	if !ok {
-		log.Printf(`%04X┐%s`, req.Id, key)
-		cached, _, err = dnsclient.Exchange(req, *flUpstream)
+		log.Printf("%04X┐%s\n", req.Id, key)
+		for attempt := 1; attempt <= queryAttempts; attempt++ {
+			cached, _, err = dnsclient.Exchange(req, *flUpstream)
+			if err != nil {
+				sep := "·"
+				if attempt == queryAttempts {
+					sep = "╳"
+				}
+				log.Printf("%04X%s%s: [%d/%d] %v\n", req.Id, sep, key,
+					attempt, queryAttempts, err)
+			}
+		}
 		if err != nil {
-			log.Printf(`%04X╳%s: %v`, req.Id, key, err)
 			dns.HandleFailed(w, req)
 			return
 		}
@@ -101,10 +123,10 @@ func serve(w dns.ResponseWriter, req *dns.Msg) {
 		if ok {
 			// concurrent exchange has already updated the cache
 			cached = cached2
-			log.Printf(`%04X┴%04X`, req.Id, cached.Id)
+			log.Printf("%04X┴%04X\n", req.Id, cached.Id)
 		} else {
 			cache[key] = cached
-			log.Printf(`%04X└%s = %s`, req.Id, key, answersSummary(cached))
+			log.Printf("%04X└%s = %s\n", req.Id, key, answersSummary(cached))
 		}
 		cacheLock.Unlock()
 	}
