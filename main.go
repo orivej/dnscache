@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 
@@ -20,8 +22,20 @@ var (
 	dnsclient = dns.Client{UDPSize: dns.MaxMsgSize, SingleInflight: true}
 )
 
+var logFormatExample = `Log format example:
+  1EF9┐a19.ru. A IN
+  1EF9└a19.ru. A IN = (A 78.47.223.116)
+  2899┐a29.ru. A IN
+  2899╳a29.ru. A IN: read udp 127.0.0.1:50019->127.0.0.1:53: i/o timeout
+`
+
 func main() {
 	log.SetFlags(log.Flags() | log.Lmicroseconds)
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Arguments:")
+		flag.PrintDefaults()
+		fmt.Fprint(os.Stderr, logFormatExample)
+	}
 	flag.Parse()
 
 	dns.HandleFunc(".", serve)
