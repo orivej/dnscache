@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	flUpstream = flag.String("upstream", "127.0.0.1:53",
-		"Upstream DNS server")
+	flListen   = flag.String("listen", ":53", "Listen address")
+	flUpstream = flag.String("upstream", ":53", "Upstream DNS server")
 )
 
 var (
@@ -20,10 +20,11 @@ var (
 )
 
 func main() {
+	log.SetFlags(log.Flags() | log.Lmicroseconds)
 	flag.Parse()
 
-	server := dns.Server{Net: "udp"}
 	dns.HandleFunc(".", serve)
+	server := dns.Server{Addr: *flListen, Net: "udp"}
 	err := server.ListenAndServe()
 	eexit(err)
 }
@@ -41,26 +42,28 @@ func msgKey(m *dns.Msg) string {
 }
 
 func serve(w dns.ResponseWriter, req *dns.Msg) {
-	var resp *dns.Msg
+	var resp dns.Msg
 	var err error
 	key := msgKey(req)
 	cacheLock.Lock()
-	resp, ok := cache[key]
+	cached, ok := cache[key]
+	// cached value will not change until return because of SingleInflight
 	cacheLock.Unlock()
-	if ok {
-		// SingleInflight ensures that resp will not be changed until the end of serve
-		resp.Id = req.Id
-	} else {
-		resp, _, err = dnsclient.Exchange(req, *flUpstream)
+	if !ok {
+		log.Println(`─┐ `, key)
+		cached, _, err = dnsclient.Exchange(req, *flUpstream)
 		if err != nil {
-			log.Printf("Can not handle %v: %v\n", key, err)
+			log.Printf(" ╳  can not handle %v: %v\n", key, err)
 			dns.HandleFailed(w, req)
 			return
 		}
+		log.Println(` └─`, key)
 		cacheLock.Lock()
-		cache[key] = resp
+		cache[key] = cached
 		cacheLock.Unlock()
 	}
-	err = w.WriteMsg(resp)
+	resp = *cached
+	resp.Id = req.Id
+	err = w.WriteMsg(&resp)
 	eprint(err)
 }
