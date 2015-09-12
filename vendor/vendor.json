@@ -1,0 +1,11 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"path": "github.com/miekg/dns",
+			"revision": "8395762c3490507cf5a27405fcd0e3d3dc547109",
+			"revisionTime": "2015-09-05T08:12:15+01:00"
+		}
+	]
+}
